@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0f1226">
+<title>Bubble Splitter Online</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#0f1226; --panel:#181c3a; --ink:#f4f1ea; --muted:#9aa0c7; --accent:#ffcf3f; --hot:#ff5a6e; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--ink);font-family:Rubik,system-ui,sans-serif;overflow:hidden;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  body{display:flex;align-items:center;justify-content:center;padding:10px 6px}
+  #wrap{width:min(100%, calc((100dvh - 20px - 64px) * 9 / 16));max-width:560px;display:flex;flex-direction:column;gap:6px}
+  #hud{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px;padding:6px 12px;background:var(--panel);
+    border-radius:12px;font-weight:600;font-size:clamp(11px,3.2vw,15px);border:2px solid #262b55}
+  #hud .item{display:flex;gap:6px;align-items:baseline;white-space:nowrap}
+  #hud .lab{color:var(--muted);font-size:.8em;text-transform:uppercase;letter-spacing:.08em}
+  #hud .val{font-family:Bungee,sans-serif;color:var(--accent)}
+  #lives{color:var(--hot);letter-spacing:2px}
+  #power{color:#7ef0c8;font-size:.85em;min-width:3em;text-align:center}
+  #net{width:9px;height:9px;border-radius:50%;background:#555;display:inline-block}
+  #net.ok{background:#3ddc84} #net.bad{background:var(--hot)}
+  #stage{position:relative;width:100%;aspect-ratio:9/16;border-radius:14px;overflow:hidden;border:3px solid #262b55;
+    box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    background:rgba(10,12,30,.78);backdrop-filter:blur(3px);text-align:center;padding:20px}
+  .overlay.hidden{display:none}
+  h1{font-family:Bungee,sans-serif;font-size:clamp(34px,11vw,60px);line-height:1;color:var(--accent);
+    text-shadow:0 4px 0 #c0392b,0 8px 20px rgba(0,0,0,.5)}
+  h1 small{display:block;font-size:.38em;color:#7ef0c8;text-shadow:none;margin-top:6px;letter-spacing:.15em}
+  h2{font-family:Bungee,sans-serif;font-size:clamp(24px,8vw,42px);color:var(--accent);text-shadow:0 3px 0 #c0392b}
+  .sub{color:#d9dcf5;font-size:clamp(13px,3.6vw,16px);max-width:420px;line-height:1.5}
+  .err{color:var(--hot);font-weight:600;min-height:1.3em;font-size:14px}
+  input{font-family:Rubik,sans-serif;font-size:18px;font-weight:600;padding:11px 14px;border-radius:10px;border:2px solid #3a4190;
+    background:#11143a;color:#fff;width:min(280px,80vw);text-align:center;outline:none}
+  input:focus{border-color:var(--accent)}
+  input.code{font-family:Bungee,sans-serif;letter-spacing:.3em;text-transform:uppercase;width:min(180px,50vw)}
+  button.big{font-family:Bungee,sans-serif;font-size:clamp(16px,5vw,21px);padding:12px 26px;border-radius:12px;border:none;
+    background:var(--accent);color:#2b1a00;cursor:pointer;box-shadow:0 5px 0 #b8860b;transition:transform .08s}
+  button.big:active{transform:translateY(3px);box-shadow:0 2px 0 #b8860b}
+  button.big:disabled{opacity:.45;cursor:default}
+  button.ghost{background:#2a3070;color:#fff;box-shadow:0 5px 0 #161a44}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
+  .divider{color:var(--muted);font-size:13px;letter-spacing:.2em}
+  .roomcode{font-family:Bungee,sans-serif;font-size:clamp(40px,14vw,64px);letter-spacing:.15em;color:#fff;
+    background:#11143a;border:2px dashed #3a4190;border-radius:14px;padding:6px 20px}
+  .plist{display:flex;flex-direction:column;gap:8px;width:min(300px,80vw)}
+  .plist div{display:flex;align-items:center;gap:10px;background:#1c2150;border-radius:10px;padding:9px 12px;font-weight:600}
+  .dot{width:16px;height:16px;border-radius:50%;flex:none;border:2px solid rgba(255,255,255,.5)}
+  .tag{margin-left:auto;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.1em}
+  .rank{display:flex;flex-direction:column;gap:6px;width:min(300px,80vw)}
+  .rank div{display:flex;gap:10px;align-items:center;background:#1c2150;border-radius:10px;padding:8px 12px;font-weight:600}
+  .rank b{font-family:Bungee,sans-serif;color:var(--accent);margin-left:auto}
+  .help{font-size:13px;color:var(--muted);line-height:1.6}
+  #pauseHint{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:13px;color:#fff;opacity:.85;pointer-events:none;
+    text-shadow:0 1px 3px #000}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div class="item"><span class="lab">Lvl</span><span class="val" id="hLevel">–</span></div>
+    <div class="item"><span class="lab">Score</span><span class="val" id="hScore">0</span></div>
+    <div class="item" id="power"></div>
+    <div class="item"><span class="lab">Time</span><span class="val" id="hTime">–</span></div>
+    <div class="item"><span id="lives"></span></div>
+    <div class="item"><span id="net" title="Connection"></span><span class="lab" id="hRoom"></span></div>
+  </div>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="pauseHint"></div>
+
+    <!-- Menu -->
+    <div class="overlay" id="ovMenu">
+      <h1>Bubble<br>Splitter<small>ONLINE · 2–4 PLAYERS</small></h1>
+      <input id="nameIn" maxlength="12" placeholder="Your name" autocomplete="off">
+      <button class="big" id="btnCreate">Create Room</button>
+      <div class="divider">— OR JOIN —</div>
+      <div class="row">
+        <input id="codeIn" class="code" maxlength="4" placeholder="CODE" autocomplete="off">
+        <button class="big ghost" id="btnJoin">Join</button>
+      </div>
+      <div class="err" id="menuErr"></div>
+      <p class="help">Swipe to move · Tap to shoot<br>Keyboard: ← → move · Space shoot</p>
+    </div>
+
+    <!-- Lobby -->
+    <div class="overlay hidden" id="ovLobby">
+      <p class="sub">Room code — share it with friends</p>
+      <div class="roomcode" id="lobbyCode">----</div>
+      <button class="big ghost" id="btnCopy" style="font-size:14px;padding:8px 16px">Copy invite link</button>
+      <div class="plist" id="lobbyList"></div>
+      <button class="big" id="btnStart">Start Game</button>
+      <p class="sub" id="lobbyWait">Waiting for the host to start…</p>
+    </div>
+
+    <!-- Generic message -->
+    <div class="overlay hidden" id="ovMsg">
+      <h2 id="msgTitle"></h2>
+      <p class="sub" id="msgSub"></p>
+      <div class="rank" id="msgRank"></div>
+      <div class="row" id="msgBtns"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- constants (match server) ----------
+  const W = 540, H = 960, FLOOR = 912, WALL = 10, CEIL = 10;
+  const RADII = [8, 14, 22, 33, 45];
+  const PLAYER_W = 30;
+  const INTERP_DELAY = 90; // ms
+
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize(); window.addEventListener('resize', resize);
+  const $ = id => document.getElementById(id);
+
+  // ---------- audio ----------
+  let actx = null;
+  function initAudio() { if (actx) return; try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  function tone(freq, dur, type = 'square', vol = 0.08, slide = 0) {
+    if (!actx) return;
+    try {
+      const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur);
+    } catch (e) {}
+  }
+  const sfx = {
+    shoot: () => tone(880, 0.08, 'square', 0.04, 400),
+    pop: s => tone(300 + (4 - s) * 140, 0.14, 'triangle', 0.11, -200),
+    hurt: () => tone(200, 0.3, 'sawtooth', 0.1, -150),
+    power: () => { tone(660, 0.08, 'sine', 0.1); setTimeout(() => tone(990, 0.12, 'sine', 0.1), 80); },
+    clear: () => [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.15, 'triangle', 0.1), i * 110)),
+    over: () => [392, 330, 262, 196].forEach((f, i) => setTimeout(() => tone(f, 0.22, 'triangle', 0.1), i * 160)),
+  };
+
+  // ---------- network ----------
+  let ws = null, myId = null, roomCode = null, hostId = null, connected = false;
+  let lobbyPlayers = [];
+  let level = { idx: 0, name: '', hue: 205, plats: [] };
+  const snaps = []; // {at, s}
+  let latest = null;
+  let syncMyX = true;
+
+  function connect(onOpen) {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}`);
+    ws.onopen = () => { connected = true; $('net').className = 'ok'; onOpen && onOpen(); };
+    ws.onclose = () => {
+      connected = false; $('net').className = 'bad';
+      if (roomCode) showMsg('Disconnected', 'Lost connection to the server.', [], [{ label: 'Back to menu', fn: () => location.href = location.pathname }]);
+      else $('menuErr').textContent = 'Could not reach the server.';
+    };
+    ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } handle(m); };
+  }
+  function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+
+  function handle(m) {
+    switch (m.t) {
+      case 'error': $('menuErr').textContent = m.msg; ws.close(); ws = null; roomCode = null; break;
+      case 'joined':
+        myId = m.id; roomCode = m.code;
+        $('hRoom').textContent = m.code;
+        history.replaceState(null, '', location.pathname + '?room=' + m.code);
+        break;
+      case 'lobby':
+        hostId = m.hostId; lobbyPlayers = m.players;
+        if (m.state === 'lobby') showLobby();
+        else renderLobbyList();
+        break;
+      case 'level':
+        level = { idx: m.level, name: m.name, hue: m.hue, plats: m.plats };
+        bgCache = null; syncMyX = true;
+        hideAll();
+        break;
+      case 's': onSnapshot(m); break;
+    }
+  }
+
+  // ---------- snapshots ----------
+  let lastState = null;
+  function onSnapshot(s) {
+    const now = performance.now();
+    snaps.push({ at: now, s });
+    while (snaps.length > 30) snaps.shift();
+    latest = s; hostId = s.host;
+    const me = s.p.find(p => p.id === myId);
+    if (me && (syncMyX || Math.abs(me.x - myX) > 70)) { myX = me.x; syncMyX = false; }
+    for (const ev of s.ev) handleEvent(ev, s);
+    if (s.st !== lastState) onStateChange(s.st, s);
+    lastState = s.st;
+    updateHud(s);
+  }
+
+  function playerById(s, id) { return s.p.find(p => p.id === id); }
+
+  function handleEvent(ev, s) {
+    const type = ev[0];
+    if (type === 'pop') {
+      const [, x, y, size, by, pts] = ev;
+      const c = ballColor(size, level.hue);
+      burst(x, y, c.main, 8 + size * 4);
+      const p = playerById(s, by);
+      floatText(x, y, '+' + pts, p ? p.c : '#ffe27a');
+      sfx.pop(size); shake = Math.max(shake, 0.05 + size * 0.03);
+    } else if (type === 'shoot') { if (ev[1] !== myId) sfx.shoot(); }
+    else if (type === 'hurt') {
+      burst(ev[2], FLOOR - 25, '#ff5a6e', 24);
+      if (ev[1] === myId) { sfx.hurt(); shake = 0.4; }
+    } else if (type === 'shield') { if (ev[1] === myId) { sfx.hurt(); shake = 0.2; } }
+    else if (type === 'power') {
+      const [, id, t, x, y] = ev;
+      const labels = { double: ['DOUBLE SHOT', '#7ef0c8'], freeze: ['FREEZE', '#8ecbff'], shield: ['SHIELD', '#ffd36e'], life: ['1UP', '#ff9fb0'] };
+      floatText(x, y - 20, labels[t][0], labels[t][1]);
+      if (id === myId || t === 'freeze') sfx.power();
+    } else if (type === 'clear') { sfx.clear(); clearBonus = ev[1]; }
+    else if (type === 'timeup') floatText(W / 2, H / 2, 'TIME UP!', '#ff5a6e');
+    else if (type === 'over') sfx.over();
+  }
+
+  let clearBonus = 0;
+  function onStateChange(st, s) {
+    if (st === 'intro' || st === 'play') { if (st === 'intro') hideAll(); else $('ovMsg').classList.add('hidden'); }
+    if (st === 'clear') {
+      showMsg('Level Clear!', `Time bonus: <b>+${clearBonus}</b><br>Next level starting…`, ranking(s), []);
+    }
+    if (st === 'over') {
+      const host = myId === hostId;
+      showMsg('Game Over', `Everyone is out on Level ${s.lv + 1}.` + (host ? '' : '<br>Waiting for the host…'), ranking(s),
+        host ? [{ label: 'Retry Level', fn: () => send({ t: 'retry' }) }, { label: 'Lobby', ghost: true, fn: () => send({ t: 'lobby' }) }] : []);
+    }
+    if (st === 'win') {
+      const r = [...s.p].sort((a, b) => b.sc - a.sc);
+      const host = myId === hostId;
+      showMsg('You Win!', `All 10 levels cleared! 🏆 ${escapeHtml(r[0].n)} has the top score.` + (host ? '' : '<br>Waiting for the host…'), ranking(s),
+        host ? [{ label: 'Play Again', fn: () => send({ t: 'start' }) }, { label: 'Lobby', ghost: true, fn: () => send({ t: 'lobby' }) }] : []);
+    }
+    if (st === 'lobby') showLobby();
+  }
+
+  function ranking(s) {
+    return [...s.p].sort((a, b) => b.sc - a.sc)
+      .map((p, i) => `<div><span class="dot" style="background:${p.c}"></span>${i + 1}. ${escapeHtml(p.n)}${p.id === myId ? ' (you)' : ''}<b>${p.sc}</b></div>`).join('');
+  }
+  function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // ---------- UI ----------
+  function hideAll() { ['ovMenu', 'ovLobby', 'ovMsg'].forEach(id => $(id).classList.add('hidden')); }
+  function showMsg(title, sub, rankHtml, buttons) {
+    hideAll();
+    $('msgTitle').textContent = title; $('msgSub').innerHTML = sub; $('msgRank').innerHTML = rankHtml || '';
+    const box = $('msgBtns'); box.innerHTML = '';
+    buttons.forEach(b => {
+      const el = document.createElement('button');
+      el.className = 'big' + (b.ghost ? ' ghost' : ''); el.textContent = b.label;
+      el.addEventListener('click', () => { initAudio(); b.fn(); });
+      box.appendChild(el);
+    });
+    $('ovMsg').classList.remove('hidden');
+  }
+  function renderLobbyList() {
+    $('lobbyList').innerHTML = lobbyPlayers.map(p =>
+      `<div><span class="dot" style="background:${p.color}"></span>${escapeHtml(p.name)}${p.id === myId ? ' (you)' : ''}` +
+      `${p.id === hostId ? '<span class="tag">Host</span>' : ''}</div>`).join('') +
+      Array.from({ length: 4 - lobbyPlayers.length }, () => `<div style="opacity:.35">Empty slot</div>`).join('');
+  }
+  function showLobby() {
+    hideAll();
+    $('lobbyCode').textContent = roomCode;
+    renderLobbyList();
+    const host = myId === hostId;
+    $('btnStart').style.display = host ? '' : 'none';
+    $('lobbyWait').textContent = host ? (lobbyPlayers.length < 2 ? 'You can start solo, or wait for friends to join.' : 'Everyone in? Start when ready!') : 'Waiting for the host to start…';
+    $('ovLobby').classList.remove('hidden');
+  }
+
+  let nameStored = '';
+  try { nameStored = localStorage.getItem('bsName') || ''; } catch (e) {}
+  $('nameIn').value = nameStored;
+  const qsRoom = new URLSearchParams(location.search).get('room');
+  if (qsRoom) $('codeIn').value = qsRoom.toUpperCase().slice(0, 4);
+
+  function getName() {
+    const n = $('nameIn').value.trim() || 'Player';
+    try { localStorage.setItem('bsName', n); } catch (e) {}
+    return n;
+  }
+  $('btnCreate').addEventListener('click', () => {
+    initAudio(); $('menuErr').textContent = '';
+    const name = getName();
+    connect(() => send({ t: 'create', name }));
+  });
+  $('btnJoin').addEventListener('click', () => {
+    initAudio(); $('menuErr').textContent = '';
+    const code = $('codeIn').value.trim().toUpperCase();
+    if (code.length !== 4) { $('menuErr').textContent = 'Enter the 4-letter room code.'; return; }
+    const name = getName();
+    connect(() => send({ t: 'join', code, name }));
+  });
+  $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnJoin').click(); });
+  $('btnStart').addEventListener('click', () => { initAudio(); send({ t: 'start' }); });
+  $('btnCopy').addEventListener('click', async () => {
+    const link = location.origin + location.pathname + '?room=' + roomCode;
+    try { await navigator.clipboard.writeText(link); $('btnCopy').textContent = 'Copied!'; }
+    catch (e) { $('btnCopy').textContent = link; }
+    setTimeout(() => $('btnCopy').textContent = 'Copy invite link', 2500);
+  });
+
+  // ---------- HUD ----------
+  function updateHud(s) {
+    $('hLevel').textContent = (s.lv + 1) + '/10';
+    $('hTime').textContent = s.time;
+    $('hTime').style.color = s.time < 15 ? 'var(--hot)' : '';
+    const me = playerById(s, myId);
+    if (me) {
+      $('hScore').textContent = me.sc;
+      $('lives').textContent = me.l > 0 ? '♥'.repeat(Math.min(me.l, 6)) : '✖';
+      const pw = [];
+      if (me.d > 0) pw.push('2× ' + me.d);
+      if (s.fz) pw.push('❄');
+      if (me.sd) pw.push('◎');
+      $('power').textContent = pw.join(' ');
+      $('pauseHint').textContent = (!me.a && (s.st === 'play' || s.st === 'intro')) ? "You're out — spectating. You'll be back next level!" : '';
+    }
+  }
+
+  // ---------- local player ----------
+  let myX = W / 2, myFace = 1, myWalk = 0, myShootT = 0, dragTarget = null;
+  const keys = { left: false, right: false };
+  let lastSentX = null, sendAcc = 0;
+
+  function iAmAlive() { const me = latest && playerById(latest, myId); return !!(me && me.a); }
+  function doFire() {
+    if (!latest || latest.st !== 'play' || !iAmAlive()) return;
+    send({ t: 'fire' }); myShootT = 0.18; sfx.shoot();
+  }
+
+  function updateLocal(dt) {
+    if (myShootT > 0) myShootT -= dt;
+    if (!latest || (latest.st !== 'play' && latest.st !== 'intro') || !iAmAlive()) { dragTarget = null; return; }
+    let mv = 0;
+    if (keys.left) mv -= 1;
+    if (keys.right) mv += 1;
+    const before = myX;
+    if (mv) { dragTarget = null; myX += mv * 300 * dt; }
+    else if (dragTarget !== null) {
+      const d = dragTarget - myX, step = 900 * dt;
+      if (Math.abs(d) > 1.5) myX += Math.max(-step, Math.min(step, d));
+    }
+    myX = Math.max(WALL + PLAYER_W / 2, Math.min(W - WALL - PLAYER_W / 2, myX));
+    if (myX !== before) { myFace = myX > before ? 1 : -1; myWalk += dt * 12; } else myWalk = 0;
+    sendAcc += dt;
+    if (sendAcc >= 1 / 30 && myX !== lastSentX) { send({ t: 'pos', x: Math.round(myX * 10) / 10 }); lastSentX = myX; sendAcc = 0; }
+  }
+
+  // ---------- effects ----------
+  let particles = [], floaters = [], shake = 0;
+  function burst(x, y, color, n = 14) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 80 + Math.random() * 260;
+      particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0.5 + Math.random() * 0.4, max: 0.9, color, r: 2 + Math.random() * 3 });
+    }
+  }
+  function floatText(x, y, text, color = '#fff') { floaters.push({ x, y, text, color, life: 0.9 }); }
+  function updateFx(dt) {
+    if (shake > 0) shake -= dt;
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i]; p.vy += 600 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    for (let i = floaters.length - 1; i >= 0; i--) {
+      const f = floaters[i]; f.y -= 50 * dt; f.life -= dt; if (f.life <= 0) floaters.splice(i, 1);
+    }
+  }
+  function ballColor(s, hueBase) {
+    const hue = (hueBase + s * 38) % 360;
+    return { main: `hsl(${hue} 85% 58%)`, dark: `hsl(${hue} 80% 32%)`, light: `hsl(${hue} 100% 85%)` };
+  }
+
+  // ---------- interpolation ----------
+  function interpolated() {
+    if (!snaps.length) return null;
+    const renderAt = performance.now() - INTERP_DELAY;
+    let a = snaps[0], b = snaps[snaps.length - 1];
+    for (let i = snaps.length - 1; i > 0; i--) {
+      if (snaps[i - 1].at <= renderAt) { a = snaps[i - 1]; b = snaps[i]; break; }
+    }
+    const span = b.at - a.at;
+    const k = span > 0 ? Math.max(0, Math.min(1, (renderAt - a.at) / span)) : 1;
+    const amap = new Map(a.s.b.map(x => [x[0], x]));
+    const balls = b.s.b.map(nb => {
+      const ob = amap.get(nb[0]);
+      if (!ob) return { x: nb[1], y: nb[2], s: nb[3] };
+      return { x: ob[1] + (nb[1] - ob[1]) * k, y: ob[2] + (nb[2] - ob[2]) * k, s: nb[3] };
+    });
+    const pmap = new Map(a.s.p.map(p => [p.id, p]));
+    const players = b.s.p.map(np => {
+      const op = pmap.get(np.id);
+      return Object.assign({}, np, { x: op ? op.x + (np.x - op.x) * k : np.x });
+    });
+    return { balls, players, s: latest };
+  }
+
+  // ---------- rendering ----------
+  let bgCache = null;
+  function getBackground() {
+    if (bgCache) return bgCache;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const hue = level.hue, i = level.idx;
+    const sky = g.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, `hsl(${(hue + 200) % 360} 45% 16%)`); sky.addColorStop(1, `hsl(${(hue + 180) % 360} 40% 30%)`);
+    g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    let seed = (i + 1) * 9301;
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    g.fillStyle = '#fff';
+    for (let k = 0; k < 90; k++) { g.globalAlpha = 0.3 + rnd() * 0.6; g.fillRect(rnd() * W, rnd() * H * 0.6, 1.5, 1.5); }
+    g.globalAlpha = 1;
+    g.fillStyle = `hsla(${hue} 80% 85% / .25)`;
+    g.beginPath(); g.arc(W - 90 - i * 30, 120, 40, 0, Math.PI * 2); g.fill();
+    for (let layer = 0; layer < 3; layer++) {
+      g.fillStyle = `hsl(${(hue + 200) % 360} 35% ${12 + layer * 5}%)`;
+      g.beginPath(); g.moveTo(0, FLOOR);
+      const base = 640 + layer * 70, amp = 110 - layer * 25;
+      for (let x = 0; x <= W; x += 30) g.lineTo(x, base - Math.abs(Math.sin(x * 0.006 + layer * 2 + i)) * amp - rnd() * 20);
+      g.lineTo(W, FLOOR); g.closePath(); g.fill();
+    }
+    const fl = g.createLinearGradient(0, FLOOR, 0, H);
+    fl.addColorStop(0, `hsl(${hue} 30% 35%)`); fl.addColorStop(1, `hsl(${hue} 30% 18%)`);
+    g.fillStyle = fl; g.fillRect(0, FLOOR, W, H - FLOOR);
+    g.fillStyle = `hsl(${hue} 50% 60%)`; g.fillRect(0, FLOOR, W, 3);
+    g.fillStyle = `hsl(${hue} 25% 22%)`;
+    g.fillRect(0, 0, WALL, H); g.fillRect(W - WALL, 0, WALL, H); g.fillRect(0, 0, W, CEIL);
+    bgCache = c; return c;
+  }
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function drawPlatforms() {
+    for (const p of level.plats) {
+      const gr = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+      gr.addColorStop(0, `hsl(${level.hue} 40% 70%)`); gr.addColorStop(1, `hsl(${level.hue} 40% 38%)`);
+      ctx.fillStyle = gr; roundRect(p.x, p.y, p.w, p.h, 5); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.25)';
+      for (let x = p.x + 10; x < p.x + p.w - 6; x += 20) ctx.fillRect(x, p.y + 4, 8, p.h - 8);
+    }
+  }
+  function drawBall(b, frozen) {
+    const r = RADII[b.s], c = ballColor(b.s, level.hue);
+    const hgt = (FLOOR - b.y) / 700;
+    ctx.fillStyle = `rgba(0,0,0,${Math.max(0.05, 0.3 - hgt * 0.25)})`;
+    ctx.beginPath(); ctx.ellipse(b.x, FLOOR + 3, r * (1 - Math.min(hgt, 0.7) * 0.5), 4, 0, 0, Math.PI * 2); ctx.fill();
+    const gr = ctx.createRadialGradient(b.x - r * 0.35, b.y - r * 0.4, r * 0.1, b.x, b.y, r);
+    gr.addColorStop(0, c.light); gr.addColorStop(0.45, c.main); gr.addColorStop(1, c.dark);
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    ctx.beginPath(); ctx.ellipse(b.x - r * 0.38, b.y - r * 0.45, r * 0.22, r * 0.13, -0.6, 0, Math.PI * 2); ctx.fill();
+    if (frozen) { ctx.strokeStyle = 'rgba(180,230,255,.9)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(b.x, b.y, r + 2, 0, Math.PI * 2); ctx.stroke(); }
+  }
+  function drawShot(x, y, color, t) {
+    ctx.strokeStyle = '#e8e2d0'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let yy = FLOOR; yy > y + 10; yy -= 6) {
+      const off = Math.sin((yy + t * 0.4) * 0.15) * 3;
+      if (yy === FLOOR) ctx.moveTo(x + off, yy); else ctx.lineTo(x + off, yy);
+    }
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x - 7, y + 10); ctx.lineTo(x + 7, y + 10); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  function drawPlayer(p, isMe) {
+    if (!p.a) return;
+    if (p.iv && Math.floor(performance.now() / 80) % 2 === 0) return;
+    const x = p.x, f = FLOOR;
+    const swing = Math.sin(p.walk || 0) * 7;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, f + 3, 18, 4, 0, 0, Math.PI * 2); ctx.fill();
+    if (isMe) { ctx.fillStyle = 'rgba(255,207,63,.25)'; ctx.beginPath(); ctx.ellipse(x, f + 3, 24, 6, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.strokeStyle = '#2b2f6b'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x - 5, f - 16); ctx.lineTo(x - 5 + swing, f - 3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 5, f - 16); ctx.lineTo(x + 5 - swing, f - 3); ctx.stroke();
+    ctx.fillStyle = '#5a3a22';
+    roundRect(x - 10 + swing, f - 6, 11, 6, 3); ctx.fill();
+    roundRect(x - 1 - swing, f - 6, 11, 6, 3); ctx.fill();
+    ctx.fillStyle = p.c; roundRect(x - 12, f - 36, 24, 22, 7); ctx.fill();
+    ctx.fillStyle = '#ffcf3f'; ctx.fillRect(x - 12, f - 20, 24, 4);
+    ctx.strokeStyle = '#f2c79a'; ctx.lineWidth = 6;
+    if (p.st) {
+      ctx.beginPath(); ctx.moveTo(x - 9, f - 32); ctx.lineTo(x - 3, f - 52); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 9, f - 32); ctx.lineTo(x + 3, f - 52); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(x - 11, f - 32); ctx.lineTo(x - 14 - swing * 0.5, f - 20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 11, f - 32); ctx.lineTo(x + 14 + swing * 0.5, f - 20); ctx.stroke();
+    }
+    ctx.fillStyle = '#f2c79a'; ctx.beginPath(); ctx.arc(x, f - 44, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a1a2e'; ctx.beginPath(); ctx.arc(x + p.f * 4, f - 45, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#8a4a2a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x + p.f * 3, f - 41, 3, 0.2, Math.PI - 0.6); ctx.stroke();
+    ctx.fillStyle = p.c; ctx.filter = 'brightness(0.7)';
+    ctx.beginPath(); ctx.arc(x, f - 47, 10.5, Math.PI, 0); ctx.fill();
+    ctx.fillRect(x + (p.f > 0 ? 2 : -14), f - 49, 12, 4);
+    ctx.filter = 'none';
+    ctx.fillStyle = '#ffcf3f'; ctx.beginPath(); ctx.arc(x, f - 57, 2.5, 0, Math.PI * 2); ctx.fill();
+    if (p.sd) {
+      ctx.strokeStyle = 'rgba(255,211,110,.8)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(x, f - 28, 32, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,211,110,.1)'; ctx.fill();
+    }
+    // name tag
+    ctx.font = '700 13px Rubik, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillText(isMe ? 'YOU' : p.n, x + 1, f - 72);
+    ctx.fillStyle = isMe ? '#ffcf3f' : '#fff'; ctx.fillText(isMe ? 'YOU' : p.n, x, f - 73);
+    ctx.restore();
+  }
+  const PU_STYLE = { double: { c: '#7ef0c8', t: '2' }, freeze: { c: '#8ecbff', t: '❄' }, shield: { c: '#ffd36e', t: '◎' }, life: { c: '#ff9fb0', t: '♥' } };
+  function drawPowerup(u) {
+    if (u[3] && Math.floor(performance.now() / 120) % 2 === 0) return;
+    const st = PU_STYLE[u[2]];
+    ctx.fillStyle = st.c; ctx.beginPath(); ctx.arc(u[0], u[1], 12, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#111'; ctx.font = 'bold 13px Rubik, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(st.t, u[0], u[1] + 1);
+  }
+  function drawScoreboard(players) {
+    const list = [...players].sort((a, b) => b.sc - a.sc);
+    ctx.save();
+    ctx.font = '600 13px Rubik, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    const bw = 150, bh = 10 + list.length * 20;
+    ctx.fillStyle = 'rgba(10,12,30,.5)'; roundRect(18, 18, bw, bh, 8); ctx.fill();
+    list.forEach((p, i) => {
+      const y = 28 + i * 20;
+      ctx.globalAlpha = p.a ? 1 : 0.45;
+      ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(30, y, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = p.id === myId ? '#ffcf3f' : '#fff';
+      ctx.fillText(p.n.slice(0, 9), 40, y);
+      ctx.textAlign = 'right'; ctx.fillText(String(p.sc), 18 + bw - 8, y); ctx.textAlign = 'left';
+    });
+    ctx.restore();
+  }
+
+  // title demo bubbles
+  const demo = [{ s: 3, x: 140, y: 250, vx: 95, vy: 0 }, { s: 2, x: 400, y: 200, vx: -95, vy: 0 }, { s: 1, x: 270, y: 300, vx: 95, vy: 0 }];
+  const DB = [150, 240, 340, 450, 560].map(h => Math.sqrt(2 * 1150 * h));
+  function demoStep(dt) {
+    for (const b of demo) {
+      const r = RADII[b.s];
+      b.vy += 1150 * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+      if (b.y + r >= FLOOR) { b.y = FLOOR - r; b.vy = -DB[b.s]; }
+      if (b.x - r <= WALL || b.x + r >= W - WALL) b.vx *= -1;
+    }
+  }
+
+  function render(dt) {
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - 0.5) * 40 * shake, (Math.random() - 0.5) * 40 * shake);
+    ctx.drawImage(getBackground(), 0, 0, W, H);
+    const view = interpolated();
+    if (!view || !latest || latest.st === 'lobby') {
+      demoStep(dt); for (const b of demo) drawBall(b, false);
+      ctx.restore(); return;
+    }
+    const s = latest;
+    drawPlatforms();
+    const now = performance.now();
+    for (const sh of s.sh) {
+      const owner = playerById(s, sh[2]);
+      drawShot(sh[0], sh[1], owner ? owner.c : '#ffcf3f', now);
+    }
+    for (const u of s.pu) drawPowerup(u);
+    for (const b of view.balls) drawBall(b, s.fz);
+    for (const p of view.players) {
+      if (p.id === myId) continue;
+      p.walk = p.m ? now / 80 : 0;
+      drawPlayer(p, false);
+    }
+    const me = view.players.find(p => p.id === myId);
+    if (me) drawPlayer(Object.assign({}, me, { x: myX, f: myFace, walk: myWalk, st: me.st || myShootT > 0 ? 1 : 0 }), true);
+
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const f of floaters) {
+      ctx.globalAlpha = Math.max(0, Math.min(1, f.life * 2));
+      ctx.font = '700 18px Rubik, sans-serif';
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillText(f.text, f.x + 1, f.y + 2);
+      ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y);
+    }
+    ctx.globalAlpha = 1;
+    drawScoreboard(view.players);
+
+    if (s.st === 'intro') {
+      ctx.fillStyle = 'rgba(10,12,30,.45)'; ctx.fillRect(0, H / 2 - 70, W, 140);
+      ctx.font = '46px Bungee, sans-serif'; ctx.fillStyle = '#ffcf3f'; ctx.textAlign = 'center';
+      ctx.fillText('LEVEL ' + (s.lv + 1), W / 2, H / 2 - 18);
+      ctx.font = '600 22px Rubik, sans-serif'; ctx.fillStyle = '#fff';
+      ctx.fillText(level.name, W / 2, H / 2 + 28);
+    }
+    ctx.restore();
+  }
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(1 / 30, (now - last) / 1000); last = now;
+    updateLocal(dt); updateFx(dt); render(dt);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---------- input ----------
+  const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' };
+  let fireHeld = false;
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (KEYMAP[e.code]) { keys[KEYMAP[e.code]] = true; e.preventDefault(); }
+    if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW')) { e.preventDefault(); if (!fireHeld) doFire(); fireHeld = true; }
+  });
+  window.addEventListener('keyup', e => {
+    if (KEYMAP[e.code]) { keys[KEYMAP[e.code]] = false; }
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') fireHeld = false;
+  });
+  window.addEventListener('blur', () => { keys.left = keys.right = false; });
+
+  // swipe to move, tap to fire (second finger tap also fires)
+  let touch = null;
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault(); initAudio();
+    if (touch && touch.id !== e.pointerId) { doFire(); return; }
+    touch = { id: e.pointerId, sx: e.clientX, sy: e.clientY, t: performance.now(), px: myX, moved: false };
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!touch || e.pointerId !== touch.id) return;
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const dx = e.clientX - touch.sx, dy = e.clientY - touch.sy;
+    if (Math.hypot(dx, dy) > 10) touch.moved = true;
+    if (touch.moved) dragTarget = Math.max(WALL + PLAYER_W / 2, Math.min(W - WALL - PLAYER_W / 2, touch.px + dx * (W / r.width) * 1.25));
+  });
+  function endTouch(e) {
+    if (!touch || e.pointerId !== touch.id) return;
+    e.preventDefault();
+    if (!touch.moved && performance.now() - touch.t < 320) doFire();
+    touch = null;
+  }
+  canvas.addEventListener('pointerup', endTouch);
+  canvas.addEventListener('pointercancel', () => { touch = null; });
+  document.addEventListener('touchmove', e => { if (e.target === canvas) e.preventDefault(); }, { passive: false });
+})();
+</script>
+</body>
+</html>
